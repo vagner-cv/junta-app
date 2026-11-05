@@ -2,12 +2,13 @@
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
-import { balances, brl, type SplitExpense } from "../lib/money";
+import { balances, brl, settlements, type SplitExpense } from "../lib/money";
 import { ExpenseForm } from "./expense-form";
 
 type Group = { id: string; name: string; owner_id: string; invite_token: string };
 export type Member = { id: string; name: string; user_id: string | null };
-type Expense = Omit<SplitExpense, "items"> & { id: string; title: string; expense_date: string; receipt_path: string | null;
+export type Expense = Omit<SplitExpense, "items"> & { id: string; title: string; expense_date: string; receipt_path: string | null;
+  created_by: string; revision: number;
   items: { description: string; quantity: number; amount_cents: number; consumers: string[] }[] };
 type Invite = { name: string; available: Member[] };
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -38,6 +39,7 @@ export default function Page() {
   const [invite, setInvite] = useState<Invite>();
   const [token, setToken] = useState("");
   const [adding, setAdding] = useState(false);
+  const [editing, setEditing] = useState<Expense>();
   const [openExpense, setOpenExpense] = useState("");
   const [receipt, setReceipt] = useState("");
   const [busy, setBusy] = useState(false);
@@ -118,7 +120,7 @@ export default function Page() {
 
   function choose(id: string) {
     if (id !== active) { setMembers([]); setExpenses([]); }
-    setAdding(false); setOpenExpense(""); setReceipt(""); setActive(id);
+    setAdding(false); setEditing(undefined); setOpenExpense(""); setReceipt(""); setActive(id);
   }
 
   async function submit(event: FormEvent<HTMLFormElement>, operation: "create" | "join" | "member") {
@@ -145,6 +147,7 @@ export default function Page() {
 
   const memberName = (id: string) => members.find(member => member.id === id)?.name ?? "Participante";
   const totals = balances(members.map(member => member.id), expenses);
+  const transfers = settlements(totals);
   const inviteLink = group ? site + "/?convite=" + group.invite_token : "";
 
   return <main>
@@ -190,14 +193,25 @@ export default function Page() {
           <button className="secondary" onClick={() => action(async () => { await navigator.clipboard.writeText(inviteLink); setNotice("Convite copiado."); })}>Copiar convite</button>
           <a href={"https://wa.me/?text=" + encodeURIComponent("Entre no grupo " + group.name + " no Junta: " + inviteLink)} target="_blank" rel="noreferrer">Convidar pelo WhatsApp</a>
         </div></section>
-        {adding ? <ExpenseForm key={group.id} client={client} userId={userId} groupId={group.id} members={members}
-          onClose={() => setAdding(false)} onSaved={() => { setAdding(false); window.dispatchEvent(new Event("junta:refresh")); }} />
+        {adding || editing ? <ExpenseForm key={editing?.id ?? group.id} client={client} userId={userId} groupId={group.id}
+          members={members} expense={editing}
+          onClose={() => { setAdding(false); setEditing(undefined); }}
+          onSaved={() => { setAdding(false); setEditing(undefined); window.dispatchEvent(new Event("junta:refresh")); }} />
           : <>
             <section><h2>Saldos</h2>
               {members.map(member => {
                 const value = totals.get(member.id) ?? 0;
                 return <div className="row" key={member.id}><span>{member.name}</span><strong className={value < 0 ? "debt" : "credit"}>{brl(Math.abs(value))} {value < 0 ? "a pagar" : value > 0 ? "a receber" : "em aberto"}</strong></div>;
               })}
+            </section>
+            <section><h2>Acertar contas</h2>
+              {transfers.length ? <>
+                <small>Transferências sugeridas com base nos saldos do grupo.</small>
+                {transfers.map(transfer => <div className="row settlement" key={transfer.from + ":" + transfer.to}>
+                  <span><strong>{memberName(transfer.from)}</strong> paga a <strong>{memberName(transfer.to)}</strong></span>
+                  <strong>{brl(transfer.cents)}</strong>
+                </div>)}
+              </> : <p>{expenses.length ? "O grupo está em dia." : "Adicione despesas para ver quem paga a quem."}</p>}
             </section>
             <section><div className="row"><h2>Despesas</h2><button disabled={!members.length} onClick={() => setAdding(true)}>Adicionar despesa</button></div>
               {!expenses.length && <p>Nenhuma despesa registrada.</p>}
@@ -209,6 +223,8 @@ export default function Page() {
                 {openExpense === expense.id && <div className="details">{expense.items.map((item, index) => <div className="row" key={index}>
                   <span>{item.quantity} × {item.description}<small>{item.consumers.map(memberName).join(", ")}</small></span><strong>{brl(item.amount_cents)}</strong>
                 </div>)}
+                  {(expense.created_by === userId || group.owner_id === userId) &&
+                    <button className="secondary" onClick={() => setEditing(expense)}>Editar despesa</button>}
                   {expense.receipt_path && (receipt
                     ? <a href={receipt} target="_blank" rel="noreferrer">Abrir comprovante</a>
                     : <button className="secondary" disabled={busy} onClick={() => action(async () => {

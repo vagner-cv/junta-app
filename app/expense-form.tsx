@@ -3,26 +3,29 @@
 import { useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { brl, cents } from "../lib/money";
-import type { Member } from "./page";
+import type { Expense, Member } from "./page";
 import { receiptTypes, type ReceiptSuggestion } from "../lib/receipt";
 
 type Names = { original: string; friendly: string };
 type NameMode = keyof Names;
 type Line = { id: string; description: string; quantity: string; value: string; consumers: string[]; names?: Names };
-type Props = { client: SupabaseClient; groupId: string; userId: string; members: Member[]; onClose: () => void; onSaved: () => void };
+type Props = { client: SupabaseClient; groupId: string; userId: string; members: Member[]; expense?: Expense; onClose: () => void; onSaved: () => void };
 
-export function ExpenseForm({ client, groupId, userId, members, onClose, onSaved }: Props) {
+export function ExpenseForm({ client, groupId, userId, members, expense, onClose, onSaved }: Props) {
   const makeLine = (description = "", quantity = "1", value = ""): Line => ({
     id: crypto.randomUUID(), description, quantity, value, consumers: members.map(member => member.id),
   });
-  const [lines, setLines] = useState<Line[]>(() => [makeLine()]);
-  const [expanded, setExpanded] = useState(lines[0].id);
+  const [lines, setLines] = useState<Line[]>(() => expense ? expense.items.map(item => ({
+    ...makeLine(item.description, String(item.quantity), (item.amount_cents / 100).toFixed(2)),
+    consumers: item.consumers,
+  })) : [makeLine()]);
+  const [expanded, setExpanded] = useState(expense ? "" : lines[0].id);
   const [nameMode, setNameMode] = useState<NameMode>("friendly");
   const [titleNames, setTitleNames] = useState<Names>();
-  const [title, setTitle] = useState("");
-  const [date, setDate] = useState(() => new Date().toLocaleDateString("sv-SE"));
-  const [total, setTotal] = useState("");
-  const [payer, setPayer] = useState(members.find(member => member.user_id === userId)?.id ?? members[0]?.id ?? "");
+  const [title, setTitle] = useState(expense?.title ?? "");
+  const [date, setDate] = useState(() => expense?.expense_date ?? new Date().toLocaleDateString("sv-SE"));
+  const [total, setTotal] = useState(expense ? (expense.total_cents / 100).toFixed(2) : "");
+  const [payer, setPayer] = useState(expense?.payer_id ?? members.find(member => member.user_id === userId)?.id ?? members[0]?.id ?? "");
   const [photo, setPhoto] = useState<File>();
   const [suggestion, setSuggestion] = useState("");
   const [error, setError] = useState("");
@@ -76,6 +79,15 @@ export function ExpenseForm({ client, groupId, userId, members, onClose, onSaved
       if (!amount || items.reduce((sum, item) => sum + item.amount_cents, 0) !== amount) {
         throw new Error("A soma dos itens deve ser igual ao total da despesa.");
       }
+      const values = { target: groupId, payer, expense_title: title, spent_on: date, total: amount, lines: items };
+      if (expense) {
+        const result = await client.rpc("edit_expense", {
+          ...values, expense_id: expense.id, expected_revision: expense.revision,
+        });
+        if (result.error) throw result.error;
+        onSaved();
+        return;
+      }
       requestId.current ??= crypto.randomUUID();
       setAttempted(true);
       const path = photo ? [groupId, userId, requestId.current].join("/") : null;
@@ -88,8 +100,7 @@ export function ExpenseForm({ client, groupId, userId, members, onClose, onSaved
         uploaded.current = true;
       }
       const result = await client.rpc("save_expense", {
-        expense_id: requestId.current, target: groupId, payer, expense_title: title,
-        spent_on: date, total: amount, lines: items, photo: path,
+        ...values, expense_id: requestId.current, photo: path,
       });
       if (result.error) throw result.error;
       onSaved();
@@ -148,11 +159,11 @@ export function ExpenseForm({ client, groupId, userId, members, onClose, onSaved
   try { expected = cents(total); } catch {}
   const difference = expected !== undefined && itemSum !== undefined ? expected - itemSum : 0;
 
-  return <section className="expense-form"><div className="row"><h2>Adicionar despesa</h2><button className="secondary" disabled={pending} onClick={onClose}>Voltar</button></div>
+  return <section className="expense-form"><div className="row"><h2>{expense ? "Editar despesa" : "Adicionar despesa"}</h2><button className="secondary" disabled={pending} onClick={onClose}>Voltar</button></div>
     {error && <p className="alert" role="alert">{error}</p>}
     {suggestion && <p role="status">{suggestion}</p>}
     <form onSubmit={submit}><fieldset disabled={pending} className="stack">
-      <div className="actions">
+      {!expense && <div className="actions">
         <button type="button" className="secondary camera-button" disabled={attempted} onClick={() => camera.current?.click()}>
           <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
             <path d="M4 6h4l2-2h4l2 2h4a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2Z" />
@@ -162,7 +173,7 @@ export function ExpenseForm({ client, groupId, userId, members, onClose, onSaved
         </button>
         <input ref={camera} hidden type="file" disabled={attempted} accept="image/*" capture="environment" onChange={selectPhoto} />
         <label className="gallery-control">Galeria<input type="file" disabled={attempted} accept="image/*" onChange={selectPhoto} /></label>
-      </div>
+      </div>}
       {photo && <div className="row"><span>{photo.name}</span><button type="button" className="secondary" disabled={attempted} onClick={() => setPhoto(undefined)}>Remover foto</button></div>}
       {photo && <button type="button" className="secondary" onClick={analyze}>Ler campos com IA</button>}
       {titleNames && <label>Nomes na despesa<select value={nameMode} onChange={event => changeNameMode(event.target.value as NameMode)}>

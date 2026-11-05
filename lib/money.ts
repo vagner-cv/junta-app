@@ -26,3 +26,26 @@ export function balances(memberIds: string[], expenses: SplitExpense[]) {
   }
   return result;
 }
+
+export function settlements(totals: ReadonlyMap<string, number>) {
+  const debtors = [...totals].filter(([, amount]) => amount < 0)
+    .map(([id, amount]) => ({ id, remaining: -amount }));
+  const creditors = [...totals].filter(([, amount]) => amount > 0)
+    .map(([id, amount]) => ({ id, remaining: amount }));
+  debtors.sort((a, b) => b.remaining - a.remaining || a.id.localeCompare(b.id));
+  creditors.sort((a, b) => b.remaining - a.remaining || a.id.localeCompare(b.id));
+
+  const transfers: { from: string; to: string; cents: number }[] = [];
+  let receiver = 0;
+  for (const debtor of debtors) {
+    while (debtor.remaining > 0 && receiver < creditors.length) {
+      const creditor = creditors[receiver];
+      const amount = Math.min(debtor.remaining, creditor.remaining);
+      transfers.push({ from: debtor.id, to: creditor.id, cents: amount });
+      debtor.remaining -= amount;
+      creditor.remaining -= amount;
+      if (creditor.remaining === 0) receiver++;
+    }
+  }
+  return transfers;
+}

@@ -28,7 +28,7 @@ test("migrações protegem dados, preservam o vínculo e deduplicam despesas", a
       grant select, insert on storage.objects to authenticated;
       create publication supabase_realtime;
     `);
-    for (const name of ["202611050001_junta", "202611050002_scan_quota", "202611050003_leave_group"]) {
+    for (const name of ["202611050001_junta", "202611050002_scan_quota", "202611050003_leave_group", "202611050004_edit_expense"]) {
       await db.exec(await readFile(new URL("../supabase/migrations/" + name + ".sql", import.meta.url), "utf8"));
     }
     await db.exec("set role authenticated");
@@ -54,6 +54,15 @@ test("migrações protegem dados, preservam o vínculo e deduplicam despesas", a
     await save([a, b]);
     await save([a, b]);
     assert.equal((await db.query("select id from public.expenses")).rows.length, 1);
+    const edit = (revision = 0, total = 5000) => db.query(
+      "select public.edit_expense($1,$2,$3,'Compras revisadas','2026-11-05',$4,$5,$6)",
+      [expense, group, a, total, JSON.stringify([{ description: "Mercado", quantity: 1, amount_cents: 5000, consumers: [b] }]), revision],
+    );
+    await assert.rejects(edit(0, 4999), /soma/);
+    await edit();
+    await assert.rejects(edit(), /mudou/);
+    const edited = await db.query("select title, receipt_path, revision from public.expenses");
+    assert.deepEqual(edited.rows[0], { title: "Compras revisadas", receipt_path: photo, revision: 1 });
 
     await asUser(outsider);
     for (const table of ["public.groups", "public.members", "public.expenses", "storage.objects"]) {
@@ -65,6 +74,7 @@ test("migrações protegem dados, preservam o vínculo e deduplicam despesas", a
 
     await asUser(guest);
     await db.query("select public.join_group($1,'',$2)", [token, b]);
+    await assert.rejects(edit(1), /Somente quem/);
     assert.equal((await db.query("select id from public.members where user_id=auth.uid()")).rows.length, 1);
     assert.equal((await db.query("select id from public.expenses")).rows.length, 1);
     assert.equal((await db.query("select name from storage.objects")).rows.length, 1);

@@ -57,3 +57,4 @@ input[type=checkbox] { width: 1.1rem; height: 1.1rem; accent-color: #00634b; }
 .receipt-difference { padding: .6rem; background: #fff0e9; color: #7e2616; border-radius: .6rem; }
 .receipt-sum p, .receipt-difference p { margin: 0; }
 .receipt-difference p + p, .receipt-difference button { margin-top: .35rem; }
+.settlement { padding: .55rem 0; border-bottom: 1px solid #dfe6df; }

@@ -1,6 +1,17 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { balances, cents } from "../lib/money";
+import { balances, cents, settlements } from "../lib/money";
+
+test("propõe transferências que zeram todos os saldos até o último centavo", () => {
+  const totals = new Map([["a", 501], ["b", 200], ["c", -100], ["d", -601]]);
+  const remaining = new Map(totals);
+  for (const { from, to, cents } of settlements(totals)) {
+    remaining.set(from, remaining.get(from)! + cents);
+    remaining.set(to, remaining.get(to)! - cents);
+  }
+  assert.deepEqual([...remaining.values()], [0, 0, 0, 0]);
+  assert.equal(totals.get("d"), -601);
+});
 
 test("rateia cada produto entre seus próprios consumidores", () => {
   assert.deepEqual([...balances(["a", "b", "c"], [{
