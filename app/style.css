@@ -1,0 +1,60 @@
+:root { color-scheme: light; font-family: system-ui, sans-serif; color: #172c24; background: #f8f8f3; }
+* { box-sizing: border-box; }
+body { margin: 0; }
+main { max-width: 46rem; margin: auto; padding: 1.2rem 1rem 3rem; }
+header { display: flex; align-items: baseline; gap: 1rem; margin-bottom: 1.2rem; flex-wrap: wrap; }
+header p { margin: 0; color: #52685e; }
+.brand { font-size: 2.25rem; font-weight: 850; letter-spacing: -.08em; }
+.brand span { color: #008362; }
+section { margin: 1rem 0; padding: clamp(1rem, 3vw, 1.5rem); border: 1px solid #dfe6df; background: white; border-radius: 1.15rem; }
+h1, h2, p { overflow-wrap: anywhere; }
+h1, h2 { margin: 0 0 .75rem; letter-spacing: -.035em; }
+h1 { font-size: 1.65rem; }
+h2 { font-size: 1.2rem; }
+p { line-height: 1.5; }
+form, .stack { display: grid; gap: .85rem; }
+label { display: grid; gap: .35rem; font-weight: 600; }
+input, select, button, a { font: inherit; }
+input:not([type=checkbox]), select { width: 100%; min-width: 0; min-height: 2.75rem; padding: .55rem .65rem; border: 1px solid #9aada1; border-radius: .55rem; background: white; color: inherit; }
+button, .actions a { border: 1px solid transparent; border-radius: .65rem; min-height: 2.75rem; padding: .5rem .75rem; font-weight: 650; cursor: pointer; }
+button { background: #00634b; color: white; }
+button:disabled { opacity: .6; cursor: default; }
+button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible { outline: 3px solid #2688bc; outline-offset: 2px; }
+.secondary, .actions a { color: #075641; background: #edf6ef; border-color: #d6e8de; }
+a { color: #075641; }
+.actions, .chips { display: flex; gap: .5rem; flex-wrap: wrap; align-items: center; }
+.row { display: flex; gap: .6rem; justify-content: space-between; align-items: center; }
+.row > span { min-width: 0; overflow-wrap: anywhere; }
+.row > strong { text-align: right; flex-shrink: 0; }
+.row + .row { margin-top: .65rem; }
+.row h2 { margin: 0; }
+.entry { text-align: left; width: 100%; border-radius: 0; background: transparent; color: inherit; padding: .75rem 0; border-bottom: 1px solid #e3e9e2; }
+small { display: block; margin-top: .2rem; color: #52685e; }
+.details { padding: .75rem; background: #f6f8f4; }
+.details > :last-child:not(.row) { display: inline-block; margin-top: .65rem; }
+.credit { color: #00634b; } .debt { color: #9f3333; }
+.alert { background: #fff0e9; color: #7e2616; border-radius: .6rem; padding: .75rem; }
+.muted { color: #52685e; }
+fieldset { margin: 0; border: 0; padding: 0; min-width: 0; }
+.columns { display: grid; grid-template-columns: 1fr 1fr; gap: .6rem; }
+.chips label { display: flex; align-items: center; gap: .4rem; padding: .5rem; border-radius: .6rem; background: #eef3ee; min-height: 2.75rem; }
+input[type=checkbox] { width: 1.1rem; height: 1.1rem; accent-color: #00634b; }
+.expense-form { padding: clamp(.75rem, 3vw, 1.25rem); }
+.expense-form > .row { margin-bottom: .65rem; }
+.expense-form .stack { gap: .55rem; }
+.expense-form .columns { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.camera-button { display: inline-flex; gap: .4rem; align-items: center; }
+.gallery-control { flex: 1 1 10rem; min-width: 0; font-size: .875rem; }
+.gallery-control input { padding: .3rem; }
+.expense-items { border: 1px solid #dfe6df; border-radius: .65rem; }
+.expense-item + .expense-item { border-top: 1px solid #dfe6df; }
+.item-summary { display: flex; justify-content: space-between; align-items: center; gap: .5rem; width: 100%; padding: .4rem .6rem; text-align: left; color: inherit; background: transparent; }
+.item-summary > :first-child { min-width: 0; }
+.item-summary strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.item-summary > :last-child { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.item-summary small { margin-top: 0; font-weight: 400; }
+.item-editor { padding: .55rem .6rem; background: #f6f8f4; }
+.receipt-difference { padding: .6rem; background: #fff0e9; color: #7e2616; border-radius: .6rem; }
+.receipt-sum p, .receipt-difference p { margin: 0; }
+.receipt-difference p + p, .receipt-difference button { margin-top: .35rem; }
+.settlement { padding: .55rem 0; border-bottom: 1px solid #dfe6df; }
